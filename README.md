@@ -1,6 +1,10 @@
 tiny-cnn: A header only, dependency-free deep learning framework in C++11
 ========
 
+Xilinx changes from original tiny-cnn:
+ - added batchnorm layer (currently feedforward only, no training)
+
+
 | **Linux/Mac OS** | **Windows** |
 |------------------|-------------|
 |[![Build Status](https://travis-ci.org/nyanp/tiny-cnn.svg?branch=master)](https://travis-ci.org/nyanp/tiny-cnn)|[![Build status](https://ci.appveyor.com/api/projects/status/s4mow1544tvoqeeu?svg=true)](https://ci.appveyor.com/project/nyanp/tiny-cnn)|
