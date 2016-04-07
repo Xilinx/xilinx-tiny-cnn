@@ -64,6 +64,15 @@ public:
     std::pair<float_t, float_t> scale() const override { return std::make_pair(float_t(0.1), float_t(0.9)); }
 };
 
+class bnn_sign : public function {
+public:
+    using function::df;
+    float_t f(const vec_t& v, cnn_size_t i) const override { return v[i] > 0 ? 1 : -1; }
+    float_t df(float_t /*y*/) const override { throw "Derivative of sign not implemented"; return float_t(1); }
+    std::pair<float_t, float_t> scale() const override { throw "Scaling of sign not implemented"; return std::make_pair(float_t(0.1), float_t(0.9)); }
+};
+
+
 class sigmoid : public function {
 public:
     using function::df;
