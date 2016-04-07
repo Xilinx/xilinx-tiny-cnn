@@ -39,6 +39,7 @@
 #include "layers/dropout_layer.h"
 #include "layers/linear_layer.h"
 #include "layers/batchnorm_layer.h"
+#include "layers/binarized_fc_layer.h"
 
 #include "activations/activation_function.h"
 #include "lossfunctions/loss_function.h"
