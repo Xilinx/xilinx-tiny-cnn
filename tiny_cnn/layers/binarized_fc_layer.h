@@ -10,11 +10,11 @@ public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    binarized_fc_layer(cnn_size_t in_dim, cnn_size_t out_dim, bool has_bias = true)
-        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, has_bias ? out_dim : 0), has_bias_(has_bias) {}
+    binarized_fc_layer(cnn_size_t in_dim, cnn_size_t out_dim)
+        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0) {}
 
     size_t connection_size() const override {
-        return size_t(in_size_) * out_size_ + size_t(has_bias_) * out_size_;
+        return size_t(in_size_) * out_size_;
     }
 
     size_t fan_in_size() const override {
@@ -44,8 +44,6 @@ public:
             for (cnn_size_t c = 0; c < in_size_; c++) {
                 a[i] += (W_[c*out_size_ + i] > 0 ? 1 : -1) * (in[c] > 0 ? 1 : -1);
             }
-            if (has_bias_)
-                a[i] += b_[i];
         });
 
         for_i(parallelize_, out_size_, [&](int i) {
@@ -68,8 +66,6 @@ public:
 
     std::string layer_type() const override { return "binarized-fully-connected"; }
 
-protected:
-    bool has_bias_;
 };
 
 } // namespace tiny_cnn
