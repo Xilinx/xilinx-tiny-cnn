@@ -45,7 +45,7 @@
 /**
  * define to enable OMP parallelization
  */
-//#define CNN_USE_OMP
+#define CNN_USE_OMP
 
 /**
  * define to use exceptions
