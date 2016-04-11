@@ -17,11 +17,12 @@ public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim)
-        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0) {
+    binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim, float_t pruneThreshold)
+        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), pruneThreshold_(pruneThreshold) {
         // initialize all binarized weights, thresholds and output flips
         for(unsigned int i = 0; i < connection_size(); i++) {
             Wbin_.push_back(false);
+            Wdisable_.push_back(false);
             FlipOutput_.push_back(false);
             Threshold_.push_back(0);
         }
@@ -62,6 +63,7 @@ public:
     virtual void post_update() {
         // once the weights have been updated, update the binarized versions too
         float2bipolar(W_, Wbin_);
+        findSmallWeights(W_, Wdisable_, pruneThreshold_);
     }
 
     void set_threshold_from_batchnorm(size_t index, float_t mean, float_t gamma, float_t invstd, float_t beta) {
@@ -112,7 +114,8 @@ public:
                 // multiplication for binarized values is basically XNOR (equals)
                 // i.e. if two values have the same sign (pos-pos or neg-neg)
                 // the mul. result will be positive, otherwise negative
-                a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
+                if(!Wdisable_[c*out_size_ + i]) // if weight is pruned, don't compute
+                    a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
             }
             // invert the output if necessary
             if(FlipOutput_[i])
@@ -142,15 +145,31 @@ public:
 
 protected:
     std::vector<bool> Wbin_;
+    std::vector<bool> Wdisable_;
     std::vector<bool> FlipOutput_;
     std::vector<int> Threshold_;
+    float_t pruneThreshold_;
 
     // utility function to convert a vector of floats into a vector of bools, where the
     // output boolean represents the sign of the input value (false: negative,
     // true: positive)
     void float2bipolar(const vec_t & in, std::vector<bool> & out) {
-        for(unsigned int i = 0; i < in.size(); i++)
+        for(unsigned int i = 0; i < in.size(); i++) {
             out[i] = in[i] >= 0 ? true : false;
+        }
+    }
+
+    // compare a set of weights against a threshold and create a vector of bits that indicates
+    // whether the weight is under the threshold (i.e. can probably by excluded from the computation)
+    void findSmallWeights(const vec_t & in, std::vector<bool> & under_threshold, float_t WThres) {
+        unsigned int numSmallWeights = 0;
+        for(unsigned int i = 0; i < in.size(); i++) {
+            float_t wabs = in[i] < 0 ? -in[i] : in[i];
+            under_threshold[i] = wabs < WThres;
+            numSmallWeights += wabs < WThres ? 1 : 0;
+        }
+        std::cout << "pruned weights " << numSmallWeights << " total weights: " << in.size() << std::endl;
+        // TODO maybe compute a neuron output threshold update during this?
     }
 
 };
