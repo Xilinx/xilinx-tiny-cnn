@@ -23,26 +23,18 @@ public:
         for(unsigned int i = 0; i < connection_size(); i++) {
             Wbin_.push_back(false);
             Wdisable_.push_back(false);
-            FlipOutput_.push_back(false);
             Threshold_.push_back(0);
         }
     }
 
-    // save/load
-    /*
+    // save/load -- TODO
     virtual void save(std::ostream& os) const {
-        // TODO only consider the binarized weights instead?
-        Base::save(os);
-        for (auto f : FlipOutput_) os << f << " ";
-        for (auto t : Threshold_) os << t << " ";
+        throw "Saving/loading BinaryNet layers directly not yet supported, need to load from npz";
     }
 
     virtual void load(std::istream& is) {
-        Base::load(is);
-        for (auto f : FlipOutput_) is >> f;
-        for (auto t : Threshold_) is >> t;
+        throw "Saving/loading BinaryNet layers directly not yet supported, need to load from npz";
     }
-    */
 
     size_t connection_size() const override {
         // number of connections/parameters in this layer
@@ -93,9 +85,14 @@ public:
         //        |--------           --------|
         //        |           or              |
         // _______|                           |_________
-
-        // we represent this with a FlipOutput parameter per neuron:
-        FlipOutput_[index] = (gamma*invstd) < 0;
+        // this could be handled by keeping an extra bit per neuron and flipping the output sign,
+        // but we flip the signs of all weights and the threshold instead.
+        if((gamma*invstd) < 0) {
+            Threshold_[index] = -Threshold_[index];
+            for (cnn_size_t c = 0; c < in_size_; c++) {
+                Wbin_[c*out_size_ + index] = !Wbin_[c*out_size_ + index];
+            }
+        }
     }
 
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
@@ -117,9 +114,6 @@ public:
                 if(!Wdisable_[c*out_size_ + i]) // if weight is pruned, don't compute
                     a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
             }
-            // invert the output if necessary
-            if(FlipOutput_[i])
-                a[i] = -a[i];
         });
 
         // apply the activation function (sign)
@@ -146,7 +140,6 @@ public:
 protected:
     std::vector<bool> Wbin_;
     std::vector<bool> Wdisable_;
-    std::vector<bool> FlipOutput_;
     std::vector<int> Threshold_;
     float_t pruneThreshold_;
 
