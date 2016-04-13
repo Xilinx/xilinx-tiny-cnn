@@ -4,6 +4,9 @@
 #include "tiny_cnn/activations/activation_function.h"
 #include <vector>
 
+// function type for offload handling. args are (input, thresholds, weights, output)
+typedef void (*BinMatVecMult)(std::vector<bool>&, std::vector<unsigned int>&, std::vector<bool>&, std::vector<bool>&);
+
 // implements a binarized fully-connected layer and "compacted" batch normalization
 // pretrained only, i.e. does not support training in tiny-cnn
 // use the set_threshold_from_batchnorm function for each neuron to absorb the
@@ -17,8 +20,8 @@ public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim, float_t pruneThreshold)
-        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), pruneThreshold_(pruneThreshold) {
+    binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim, float_t pruneThreshold, BinMatVecMult offload = 0)
+        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), pruneThreshold_(pruneThreshold), Offload_(offload) {
         // initialize all binarized weights, thresholds and output flips
         for(unsigned int i = 0; i < connection_size(); i++) {
             Wbin_.push_back(false);
@@ -107,19 +110,29 @@ public:
         vec_t &a = a_[index];
         vec_t &out = output_[index];
 
-        for_i(parallelize_, out_size_, [&](int i) {
-            a[i] = 0;
-            for (cnn_size_t c = 0; c < in_size_; c++) {
-                // multiplication for binarized values is basically XNOR (equals)
-                // i.e. if two values have the same sign (pos-pos or neg-neg)
-                // we increment the popcount for this row
-                if(!Wdisable_[c*out_size_ + i]) // if weight is pruned, don't compute
-                    a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
-            }
-            // compute the activation by comparing against the threshold
-            // (the tiny-cnn specified act.fn. becomes unnecessary)
-            out[i] = a[i] >= Threshold_[i] ? +1 : -1;
-        });
+        if(Offload_ != 0) {
+            // call offload hook to perform actual computation
+            std::vector<bool> res(out_size_, false);
+            Offload_(in_bin, Threshold_, Wbin_, res);
+            for(unsigned int i = 0; i < out_size_; i++)
+                out[i] = res[i] == 1 ? +1 : -1;
+        } else {
+            for_i(parallelize_, out_size_, [&](int i) {
+                a[i] = 0;
+                for (cnn_size_t c = 0; c < in_size_; c++) {
+                    // multiplication for binarized values is basically XNOR (equals)
+                    // i.e. if two values have the same sign (pos-pos or neg-neg)
+                    // we increment the popcount for this row
+                    if(!Wdisable_[c*out_size_ + i]) // if weight is pruned, don't compute
+                        a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
+                }
+                // compute the activation by comparing against the threshold
+                // (the tiny-cnn specified act.fn. becomes unnecessary)
+                out[i] = a[i] >= Threshold_[i] ? +1 : -1;
+            });
+        }
+
+
 
         CNN_LOG_VECTOR(out, "[binarynet]forward");
 
@@ -143,6 +156,7 @@ protected:
     std::vector<bool> Wdisable_;
     std::vector<unsigned int> Threshold_;
     float_t pruneThreshold_;
+    BinMatVecMult Offload_;
 
     // utility function to convert a vector of floats into a vector of bools, where the
     // output boolean represents the sign of the input value (false: negative,
