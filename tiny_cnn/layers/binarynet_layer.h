@@ -78,7 +78,7 @@ public:
         // by solving for the fc value that sets the batch-normalized output value to zero:
         // gamma*(fc - mean)*invstd+beta = 0
         // fc = mean-beta/(gamma*invstd)
-        Threshold_[index] = mean - (beta / (gamma*invstd));
+        int thres = mean - (beta / (gamma*invstd));
 
         // depending on the sign of the multiplicative factor (gamma*invstd) the neuron output plot
         // may reverse direction, e.g:
@@ -88,11 +88,16 @@ public:
         // this could be handled by keeping an extra bit per neuron and flipping the output sign,
         // but we flip the signs of all weights and the threshold instead.
         if((gamma*invstd) < 0) {
-            Threshold_[index] = -Threshold_[index];
+            thres = -thres;
             for (cnn_size_t c = 0; c < in_size_; c++) {
                 Wbin_[c*out_size_ + index] = !Wbin_[c*out_size_ + index];
             }
         }
+        // ensure a positive threshold by averaging with the neuron fan-in
+        // TODO fan-in will change per-neuron for pruned networks!
+        // by ensuring a positive threshold, it becomes possible to use popcount (instead of signed add)
+        // for the addition, followed by a greater than comparison for the threshold
+        Threshold_[index] = (thres + fan_in_size()) / 2;
     }
 
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
@@ -103,23 +108,19 @@ public:
         vec_t &out = output_[index];
 
         for_i(parallelize_, out_size_, [&](int i) {
-            // initialize synaptic sum to negative of threshold
-            // if there are enough contributions from each synapse in the right direction,
-            // the sum will cross the threshold
-            a[i] = -Threshold_[i];
+            a[i] = 0;
             for (cnn_size_t c = 0; c < in_size_; c++) {
                 // multiplication for binarized values is basically XNOR (equals)
                 // i.e. if two values have the same sign (pos-pos or neg-neg)
-                // the mul. result will be positive, otherwise negative
+                // we increment the popcount for this row
                 if(!Wdisable_[c*out_size_ + i]) // if weight is pruned, don't compute
-                    a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
+                    a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
             }
+            // compute the activation by comparing against the threshold
+            // (the tiny-cnn specified act.fn. becomes unnecessary)
+            out[i] = a[i] >= Threshold_[i] ? +1 : -1;
         });
 
-        // apply the activation function (sign)
-        for_i(parallelize_, out_size_, [&](int i) {
-            out[i] = h_.f(a, i);
-        });
         CNN_LOG_VECTOR(out, "[binarynet]forward");
 
         return next_ ? next_->forward_propagation(out, index) : out;
@@ -140,7 +141,7 @@ public:
 protected:
     std::vector<bool> Wbin_;
     std::vector<bool> Wdisable_;
-    std::vector<int> Threshold_;
+    std::vector<unsigned int> Threshold_;
     float_t pruneThreshold_;
 
     // utility function to convert a vector of floats into a vector of bools, where the
