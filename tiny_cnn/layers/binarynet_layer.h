@@ -22,21 +22,29 @@ public:
 
     binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim, float_t pruneThreshold, BinMatVecMult offload = 0)
         : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), pruneThreshold_(pruneThreshold), Offload_(offload) {
-        // initialize all binarized weights, thresholds and output flips
-        for(unsigned int i = 0; i < connection_size(); i++) {
+        // initialize all binarized weights and thresholds
+        for(unsigned int i = 0; i < in_size_ * out_size_; i++) {
             Wbin_.push_back(false);
-            Wdisable_.push_back(false);
+        }
+
+        for(unsigned int i = 0; i < out_size_; i++) {
             Threshold_.push_back(0);
         }
     }
 
-    // save/load -- TODO
+    // save/load
     virtual void save(std::ostream& os) const {
-        throw "Saving/loading BinaryNet layers directly not yet supported, need to load from npz";
+        for (auto w : Wbin_) os << (w ? 1 : 0) << "\n";
+        for (auto thr : Threshold_) os << thr << "\n";
     }
 
     virtual void load(std::istream& is) {
-        throw "Saving/loading BinaryNet layers directly not yet supported, need to load from npz";
+        bool w;
+        for(unsigned int i = 0; i < in_size_ * out_size_; i++) {
+            is >> w;
+            Wbin_[i] = w;
+        }
+        for (auto& thr : Threshold_) is >> thr;
     }
 
     size_t connection_size() const override {
@@ -58,7 +66,6 @@ public:
     virtual void post_update() {
         // once the weights have been updated, update the binarized versions too
         float2bipolar(W_, Wbin_);
-        findSmallWeights(W_, Wdisable_, pruneThreshold_);
     }
 
     void set_threshold_from_batchnorm(size_t index, float_t mean, float_t gamma, float_t invstd, float_t beta) {
@@ -123,8 +130,7 @@ public:
                     // multiplication for binarized values is basically XNOR (equals)
                     // i.e. if two values have the same sign (pos-pos or neg-neg)
                     // we increment the popcount for this row
-                    if(!Wdisable_[c*out_size_ + i]) // if weight is pruned, don't compute
-                        a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
+                    a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
                 }
                 // compute the activation by comparing against the threshold
                 // (the tiny-cnn specified act.fn. becomes unnecessary)
@@ -153,7 +159,6 @@ public:
 
 protected:
     std::vector<bool> Wbin_;
-    std::vector<bool> Wdisable_;
     std::vector<unsigned int> Threshold_;
     float_t pruneThreshold_;
     BinMatVecMult Offload_;
