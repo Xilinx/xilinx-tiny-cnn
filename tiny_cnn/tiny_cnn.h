@@ -41,6 +41,7 @@
 #include "layers/batchnorm_layer.h"
 #include "layers/binarized_fc_layer.h"
 #include "layers/binarynet_layer.h"
+#include "layers/binarized_conv_layer.h"
 
 #include "activations/activation_function.h"
 #include "lossfunctions/loss_function.h"
