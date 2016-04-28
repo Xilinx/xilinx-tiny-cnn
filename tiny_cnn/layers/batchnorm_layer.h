@@ -21,27 +21,33 @@ public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    batchnorm_layer(cnn_size_t dim)
-        : Base(dim, dim, 4*dim, 0) {}
+    // channels: number of channels. each channel has a batchnorm parameter set.
+    // dim: number of pixels/elements in each channel.
+    batchnorm_layer(cnn_size_t channels, cnn_size_t dim = 1)
+        : Base(dim*channels, dim*channels, 4*channels, 0), dim_(dim), channels_(channels)
+    {}
 
     size_t connection_size() const override {
         return in_size_;
     }
 
     size_t fan_in_size() const override {
-        return 1;
+        return dim_;
     }
 
     size_t fan_out_size() const override {
-        return 1;
+        return dim_;
     }
 
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
         vec_t &a = a_[index];
         vec_t &out = output_[index];
 
-        for_i(parallelize_, out_size_, [&](int i) {
-            a[i] = gamma(i) * (in[i] - mean(i)) * invstd(i) + beta(i);
+        for_i(parallelize_, channels_, [&](int ch) {
+            for(unsigned int j = 0; j < dim_; j++) {
+                unsigned int pos = ch*dim_ + j;
+                a[pos] = gamma(ch) * (in[pos] - mean(ch)) * invstd(ch) + beta(ch);
+            }
         });
 
         for_i(parallelize_, out_size_, [&](int i) {
@@ -65,6 +71,8 @@ public:
     std::string layer_type() const override { return "batchnorm"; }
 
 protected:
+    unsigned int dim_;
+    unsigned int channels_;
     inline float_t beta(unsigned int ind) {
         return W_[(in_size_ * 0) + ind];
     }
