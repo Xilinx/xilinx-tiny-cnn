@@ -74,19 +74,19 @@ protected:
     unsigned int dim_;
     unsigned int channels_;
     inline float_t beta(unsigned int ind) {
-        return W_[(in_size_ * 0) + ind];
+        return W_[(channels_ * 0) + ind];
     }
 
     inline float_t gamma(unsigned int ind) {
-        return W_[(in_size_ * 1) + ind];
+        return W_[(channels_ * 1) + ind];
     }
 
     inline float_t mean(unsigned int ind) {
-        return W_[(in_size_ * 2) + ind];
+        return W_[(channels_ * 2) + ind];
     }
 
     inline float_t invstd(unsigned int ind) {
-        return W_[(in_size_ * 3) + ind];
+        return W_[(channels_ * 3) + ind];
     }
 
 };
