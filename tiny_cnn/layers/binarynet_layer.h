@@ -20,8 +20,8 @@ public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim, float_t pruneThreshold, BinMatVecMult offload = 0)
-        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), pruneThreshold_(pruneThreshold), Offload_(offload) {
+    binarynet_layer(cnn_size_t in_dim, cnn_size_t out_dim, BinMatVecMult offload = 0)
+        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), Offload_(offload) {
         // initialize all binarized weights and thresholds
         for(unsigned int i = 0; i < in_size_ * out_size_; i++) {
             Wbin_.push_back(false);
@@ -104,7 +104,6 @@ public:
             }
         }
         // ensure a positive threshold by averaging with the neuron fan-in
-        // TODO fan-in will change per-neuron for pruned networks!
         // by ensuring a positive threshold, it becomes possible to use popcount (instead of signed add)
         // for the addition, followed by a greater than comparison for the threshold
         Threshold_[index] = (thres + fan_in_size()) / 2;
@@ -160,7 +159,6 @@ public:
 protected:
     std::vector<bool> Wbin_;
     std::vector<unsigned int> Threshold_;
-    float_t pruneThreshold_;
     BinMatVecMult Offload_;
 
     // utility function to convert a vector of floats into a vector of bools, where the
@@ -172,18 +170,7 @@ protected:
         }
     }
 
-    // compare a set of weights against a threshold and create a vector of bits that indicates
-    // whether the weight is under the threshold (i.e. can probably by excluded from the computation)
-    void findSmallWeights(const vec_t & in, std::vector<bool> & under_threshold, float_t WThres) {
-        unsigned int numSmallWeights = 0;
-        for(unsigned int i = 0; i < in.size(); i++) {
-            float_t wabs = in[i] < 0 ? -in[i] : in[i];
-            under_threshold[i] = wabs < WThres;
-            numSmallWeights += wabs < WThres ? 1 : 0;
-        }
-        std::cout << "pruned weights " << numSmallWeights << " total weights: " << in.size() << std::endl;
-        // TODO maybe compute a neuron output threshold update during this?
-    }
+
 
 };
 
