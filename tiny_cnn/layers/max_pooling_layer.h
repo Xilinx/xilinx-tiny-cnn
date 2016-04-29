@@ -100,6 +100,8 @@ public:
         for_i(parallelize_, out_size_, [&](int i) {
             out[i] = h_.f(a, i);
         });
+
+        CNN_LOG_VECTOR(out, "[maxp]fwd");
         return next_ ? next_->forward_propagation(out, index) : out;
     }
 
@@ -148,7 +150,9 @@ private:
     index3d<cnn_size_t> out_;
 
     static cnn_size_t pool_out_dim(cnn_size_t in_size, cnn_size_t pooling_size, cnn_size_t stride) {
-        return (int) std::ceil(((double)in_size - pooling_size) / stride) + 1;
+        //return (int) std::ceil(((double)in_size - pooling_size) / stride) + 1;
+        // TODO compute this properly -- just a quick fix to match with Lasagne/Theano maxpool output size
+        return (cnn_size_t) in_size/pooling_size;
     }
 
     void connect_kernel(cnn_size_t pooling_size, cnn_size_t outx, cnn_size_t outy, cnn_size_t  c)
