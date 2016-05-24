@@ -1,4 +1,4 @@
-#pragma ONCE
+#pragma once
 #include "tiny_cnn/layers/layer.h"
 
 // right now functional during inference only
