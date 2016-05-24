@@ -9,7 +9,7 @@
 #include <vector>
 
 // function type for offload handling. args are (input, output)
-typedef void (*OffloadHandler)(const float_t *, unsigned int, float_t *, unsigned int, unsigned int);
+typedef void (*OffloadHandler)(const float_t *, unsigned int, tiny_cnn::vec_t &, unsigned int, unsigned int);
 
 namespace tiny_cnn {
 
@@ -22,12 +22,7 @@ public:
         Base(in_dim, out_dim, 0, 0), offloadHandler_(handler), offloadID_(offloadID)
     {
         // disable parallelization for offloaded layers
-        outBuf_ = new float_t[out_dim];
         Base::set_parallelize(false);
-    }
-
-    ~offloaded_layer() {
-        delete [] outBuf_;
     }
 
     std::string layer_type() const override { return "offloaded"; }
@@ -37,28 +32,22 @@ public:
     }
 
     size_t connection_size() const override {
-        return this->in_size();
+        return 0;
     }
 
     size_t fan_in_size() const override {
-        return 1;
+        return in_size_;
     }
 
     size_t fan_out_size() const override {
-        return 1;
+        return out_size_;
     }
 
     // forward prop does nothing except calling the
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
         const float_t * inP = &in[index];
-
-        offloadHandler_(inP, in_dim(), outBuf_, out_dim(), offloadID_);
-
         vec_t & out = output_[index];
-
-        for(size_t i = 0; i < out_dim(); i++) {
-            out[i] = outBuf_[i];
-        }
+        offloadHandler_(inP, in_dim(), out, out_dim(), offloadID_);
 
         return next_ ? next_->forward_propagation(out, index) : out;
     }
@@ -77,7 +66,6 @@ public:
 protected:
     OffloadHandler offloadHandler_;
     unsigned int offloadID_;
-    float_t * outBuf_;
 
 };
 
