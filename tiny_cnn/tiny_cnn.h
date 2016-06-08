@@ -43,6 +43,7 @@
 #include "layers/binarynet_layer.h"
 #include "layers/binarized_conv_layer.h"
 #include "layers/offloaded_layer.h"
+#include "layers/bnn_threshold_layer.h"
 
 #include "activations/activation_function.h"
 #include "lossfunctions/loss_function.h"
