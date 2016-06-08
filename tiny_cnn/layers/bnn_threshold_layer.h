@@ -8,7 +8,6 @@ namespace tiny_cnn {
 class bnn_threshold_layer : public layer<activation::identity> {
 public:
     typedef layer<activation::identity> Base;
-    CNN_USE_LAYER_MEMBERS;
 
     // channels: number of channels. each channel has a separate threshold
     // dim: number of pixels/elements in each channel.
@@ -16,16 +15,15 @@ public:
         : Base(dim*channels, dim*channels, 0, 0), dim_(dim), channels_(channels),
           thresholds_(channels, 0), invertOutput_(channels, false)
     {
-
-        CNN_LOG_VECTOR(out, "[bn]forward");
+      set_parallelize(false);
     }
 
-    void setThreshold(unsigned int index, unsigned int value) {
-        thresholds_[index] = value;
+    std::vector<int> & thresholds() {
+      return thresholds_;
     }
 
-    void setInvertOutput(unsigned int index, bool value) {
-        invertOutput_[index] = value;
+    std::vector<bool> & invertOutput() {
+      return invertOutput_;
     }
 
     size_t connection_size() const override {
@@ -43,14 +41,15 @@ public:
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
         vec_t &out = output_[index];
 
-        for_i(parallelize_, channels_, [&](int ch) {
-            for(unsigned int j = 0; j < dim_; j++) {
-                unsigned int pos = ch*dim_ + j;
-                out[pos] = (in[pos] >= thresholds_[ch] ? +1 : -1);
-                if(invertOutput_[ch])
-                    out[pos] = -out[pos];
-            }
-        });
+        for(unsigned int ch = 0; ch < channels_; ch++) {
+          for(unsigned int j = 0; j < dim_; j++) {
+              unsigned int pos = ch*dim_ + j;
+              out[pos] = (in[pos] >= thresholds_[ch] ? +1 : -1);
+
+              if(invertOutput_[ch])
+                  out[pos] = -out[pos];
+          }
+        }
 
         return next_ ? next_->forward_propagation(out, index) : out;
     }
@@ -72,7 +71,7 @@ protected:
     unsigned int channels_;
 
 
-    std::vector<unsigned int> thresholds_;
+    std::vector<int> thresholds_;
     std::vector<bool> invertOutput_;
 };
 
