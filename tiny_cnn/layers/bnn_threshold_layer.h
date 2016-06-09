@@ -45,7 +45,7 @@ public:
         for(unsigned int ch = 0; ch < channels_; ch++) {
           for(unsigned int j = 0; j < dim_; j++) {
               unsigned int pos = ch*dim_ + j;
-              out[pos] = (in[pos] >= thresholds_[ch] ? +1 : -1);
+              out[pos] = (in[pos] > thresholds_[ch] ? +1 : -1);
 
               if(invertOutput_[ch])
                   out[pos] = -out[pos];
