@@ -379,23 +379,7 @@ Stream& operator << (Stream& s, const index3d<T>& d) {
     using layer<Activation>::h_
 
 
-#define CNN_LOG_VECTOR(vec, name)
-/*
-void CNN_LOG_VECTOR(const vec_t& vec, const std::string& name) {
-    std::cout << name << ",";
-
-    if (vec.empty()) {
-        std::cout << "(empty)" << std::endl;
-    }
-    else {
-        for (size_t i = 0; i < vec.size(); i++) {
-            std::cout << vec[i] << ",";
-        }
-    }
-
-    std::cout << std::endl;
-}
-*/
+void CNN_LOG_VECTOR(const vec_t& vec, const std::string& name);
 
 } // namespace tiny_cnn
 

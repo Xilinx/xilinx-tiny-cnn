@@ -18,11 +18,13 @@ public:
         cnn_size_t in_height,
         cnn_size_t window_size,
         cnn_size_t in_channels,
-        cnn_size_t out_channels)
+        cnn_size_t out_channels,
+        bool usePopcount = false)
         : Base(in_width*in_height*in_channels, (in_width-window_size+1)*(in_height-window_size+1)*out_channels,
                out_channels*in_channels*window_size*window_size, 0),
           in_width_(in_width), in_height_(in_height), window_size_(window_size), in_channels_(in_channels), out_channels_(out_channels),
-          Wbin_(out_channels*in_channels*window_size*window_size, false)
+          Wbin_(out_channels*in_channels*window_size*window_size, false),
+          usePopcount_(usePopcount)
     {
         // TODO re-enable parallelization -- need to support worker index in forward prop
         Base::set_parallelize(false);
@@ -82,7 +84,13 @@ public:
                             for(cnn_size_t kx = 0; kx < window_size_; kx++) {
                                 unsigned int weight_ind = weight_base + ky*window_size_ + kx;
                                 unsigned int input_ind = input_base + ky*in_width_ + kx;
-                                acc += Wbin_[weight_ind] == in_bin[input_ind] ? +1 : -1;
+                                if(usePopcount_) {
+                                    // accumulate popcount (+1 bits) only
+                                    acc += Wbin_[weight_ind] == in_bin[input_ind] ? +1 : 0;
+                                } else {
+                                    // accumulate sum of +1 and -1s
+                                    acc += Wbin_[weight_ind] == in_bin[input_ind] ? +1 : -1;
+                                }
                             }
                         }
                     }
@@ -92,6 +100,8 @@ public:
             }
         }
 
+        CNN_LOG_VECTOR(out, "[bnn_conv_layer] forward ");
+
         return next_ ? next_->forward_propagation(out, worker_index) : out;
     }
 
@@ -100,6 +110,7 @@ public:
     }
 
 protected:
+    bool usePopcount_;
     std::vector<bool> Wbin_;
     cnn_size_t in_width_;
     cnn_size_t in_height_;
