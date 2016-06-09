@@ -41,7 +41,7 @@
 #include "layers/batchnorm_layer.h"
 #include "layers/binarized_fc_layer.h"
 #include "layers/binarynet_layer.h"
-#include "layers/binarized_conv_layer.h"
+#include "layers/bnn_conv_layer.h"
 #include "layers/offloaded_layer.h"
 #include "layers/bnn_threshold_layer.h"
 

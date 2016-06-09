@@ -15,6 +15,7 @@ public:
         : Base(dim*channels, dim*channels, 0, 0), dim_(dim), channels_(channels),
           thresholds_(channels, 0), invertOutput_(channels, false)
     {
+      // TODO re-enable parallelization -- need to support worker index in forward prop
       set_parallelize(false);
     }
 
