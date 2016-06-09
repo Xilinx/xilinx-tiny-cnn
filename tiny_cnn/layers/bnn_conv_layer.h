@@ -53,8 +53,7 @@ public:
 
     virtual void post_update() {
         // once the weights have been updated, update the binarized versions too
-        // TODO re-enable binarization once we are ready
-        //float2bipolar(W_, Wbin_);
+        float2bipolar(W_, Wbin_);
     }
 
     virtual const vec_t& back_propagation_2nd(const vec_t& current_delta2) override {
@@ -63,6 +62,9 @@ public:
 
     virtual const vec_t& forward_propagation(const vec_t& in_raw, size_t worker_index) override
     {
+        // turn the input into a vector of bools
+        std::vector<bool> in_bin(in_raw.size(), false);
+        float2bipolar(in_raw, in_bin);
         vec_t &out = output_[worker_index];
 
         // TODO implement actual binarized version
@@ -72,7 +74,7 @@ public:
             unsigned int output_base = oc * out_height_ * out_width_;
             for(cnn_size_t oy = 0; oy < out_height_; oy++) {
                 for(cnn_size_t ox = 0; ox < out_width_; ox++) {
-                    float_t acc = 0;
+                    int acc = 0;
                     for(cnn_size_t ic = 0; ic < in_channels_; ic++) {
                         unsigned int weight_base = oc*(window_size_*window_size_*in_channels_) + (window_size_*window_size_*ic);
                         unsigned int input_base = ic*(in_width_*in_height_) + oy*in_width_ + ox;
@@ -80,7 +82,7 @@ public:
                             for(cnn_size_t kx = 0; kx < window_size_; kx++) {
                                 unsigned int weight_ind = weight_base + ky*window_size_ + kx;
                                 unsigned int input_ind = input_base + ky*in_width_ + kx;
-                                acc += W_[weight_ind] * in_raw[input_ind];
+                                acc += Wbin_[weight_ind] == in_bin[input_ind] ? +1 : -1;
                             }
                         }
                     }
