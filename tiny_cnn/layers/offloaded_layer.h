@@ -8,8 +8,8 @@
 #include "tiny_cnn/util/util.h"
 #include <vector>
 
-// function type for offload handling. args are (input, output)
-typedef void (*OffloadHandler)(const float_t *, unsigned int, tiny_cnn::vec_t &, unsigned int, unsigned int);
+// function type for offload handling. args are (input, output, offloadID)
+typedef void (*OffloadHandler)(const tiny_cnn::vec_t &, tiny_cnn::vec_t &, unsigned int);
 
 namespace tiny_cnn {
 
@@ -45,9 +45,8 @@ public:
 
     // forward prop does nothing except calling the
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
-        const float_t * inP = &in[index];
         vec_t & out = output_[index];
-        offloadHandler_(inP, in_dim(), out, out_dim(), offloadID_);
+        offloadHandler_(in, out, offloadID_);
 
         return next_ ? next_->forward_propagation(out, index) : out;
     }
