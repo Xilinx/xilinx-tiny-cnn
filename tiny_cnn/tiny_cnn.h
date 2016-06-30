@@ -39,7 +39,7 @@
 #include "layers/dropout_layer.h"
 #include "layers/linear_layer.h"
 #include "layers/batchnorm_layer.h"
-#include "layers/binarized_fc_layer.h"
+#include "layers/bnn_fc_layer.h"
 #include "layers/binarynet_layer.h"
 #include "layers/bnn_conv_layer.h"
 #include "layers/offloaded_layer.h"

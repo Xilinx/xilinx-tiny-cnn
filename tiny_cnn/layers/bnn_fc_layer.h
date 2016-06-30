@@ -2,20 +2,36 @@
 #include "tiny_cnn/layers/layer.h"
 #include "tiny_cnn/util/product.h"
 #include <vector>
+#include <string>
+#include <iostream>
 
 namespace tiny_cnn {
 
 template<typename Activation>
-class binarized_fc_layer : public layer<Activation> {
+class bnn_fc_layer : public layer<Activation> {
 public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    binarized_fc_layer(cnn_size_t in_dim, cnn_size_t out_dim)
-        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0) {
-        // initialize all binarized weights to false
-        for(unsigned int i = 0; i < connection_size(); i++)
-            Wbin_.push_back(false);
+    bnn_fc_layer(cnn_size_t in_dim, cnn_size_t out_dim,
+                 bool usePopcount = false, std::string binaryParamFile = "")
+        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), Wbin_(in_dim*out_dim, false),
+          usePopcount_(usePopcount) {
+        if(binaryParamFile != "")
+          loadFromBinaryFile(binaryParamFile);
+    }
+
+    void loadFromBinaryFile(std::string fileName) {
+      // TODO this assumes the binary file always uses 8 bytes per threshold entry
+
+      // load weights
+      std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      for(unsigned int line = 0 ; line < Wbin_.size(); line++) {
+        unsigned long long e = 0;
+        wf.read((char *)&e, sizeof(unsigned long long));
+        Wbin_[line] = e == 1 ? true : false;
+      }
+      wf.close();
     }
 
     size_t connection_size() const override {
@@ -48,7 +64,11 @@ public:
                 // multiplication for binarized values is basically XNOR (equals)
                 // i.e. if two values have the same sign (pos-pos or neg-neg)
                 // the mul. result will be positive, otherwise negative
-                a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
+                // when using the popcount mode, consider positive results only
+                if(usePopcount_)
+                  a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
+                else
+                  a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
             }
         });
 
@@ -70,10 +90,11 @@ public:
         return current_delta2;
     }
 
-    std::string layer_type() const override { return "binarized-fully-connected"; }
+    std::string layer_type() const override { return "bnn_fc_layer"; }
 
 protected:
     std::vector<bool> Wbin_;
+    bool usePopcount_;
 
     // utility function to convert a vector of floats into a vector of bools, where the
     // output boolean represents the sign of the input value (false: negative,

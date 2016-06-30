@@ -19,7 +19,7 @@ public:
         cnn_size_t window_size,
         cnn_size_t in_channels,
         cnn_size_t out_channels,
-        bool usePopcount = false)
+        bool usePopcount = false, std::string binaryParamFile = "")
         : Base(in_width*in_height*in_channels, (in_width-window_size+1)*(in_height-window_size+1)*out_channels,
                out_channels*in_channels*window_size*window_size, 0),
           in_width_(in_width), in_height_(in_height), window_size_(window_size), in_channels_(in_channels), out_channels_(out_channels),
@@ -31,6 +31,21 @@ public:
         out_width_ = (in_width-window_size+1);
         out_height_ = (in_height-window_size+1);
 
+        if(binaryParamFile != "")
+          loadFromBinaryFile(binaryParamFile);
+    }
+
+    void loadFromBinaryFile(std::string fileName) {
+      // TODO this assumes the binary file always uses 8 bytes per threshold entry
+
+      // load weights
+      std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      for(unsigned int line = 0 ; line < Wbin_.size(); line++) {
+        unsigned long long e = 0;
+        wf.read((char *)&e, sizeof(unsigned long long));
+        Wbin_[line] = e == 1 ? true : false;
+      }
+      wf.close();
     }
 
     ///< number of incoming connections for each output unit
