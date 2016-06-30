@@ -14,9 +14,9 @@ public:
     CNN_USE_LAYER_MEMBERS;
 
     bnn_fc_layer(cnn_size_t in_dim, cnn_size_t out_dim,
-                 bool usePopcount = false, std::string binaryParamFile = "")
+                 bool usePopcount = false, bool rowMajorWeights = false, std::string binaryParamFile = "")
         : Base(in_dim, out_dim, size_t(in_dim) * out_dim, 0), Wbin_(in_dim*out_dim, false),
-          usePopcount_(usePopcount) {
+          usePopcount_(usePopcount), rowMajorWeights_(rowMajorWeights) {
         if(binaryParamFile != "")
           loadFromBinaryFile(binaryParamFile);
     }
@@ -65,10 +65,11 @@ public:
                 // i.e. if two values have the same sign (pos-pos or neg-neg)
                 // the mul. result will be positive, otherwise negative
                 // when using the popcount mode, consider positive results only
+                const unsigned int wInd = rowMajorWeights_ ? i*out_size_+c : c*out_size_+i;
                 if(usePopcount_)
-                  a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : 0;
+                  a[i]  += (Wbin_[wInd] == in_bin[c]) ? +1 : 0;
                 else
-                  a[i]  += (Wbin_[c*out_size_ + i] == in_bin[c]) ? +1 : -1;
+                  a[i]  += (Wbin_[wInd] == in_bin[c]) ? +1 : -1;
             }
         });
 
@@ -94,7 +95,7 @@ public:
 
 protected:
     std::vector<bool> Wbin_;
-    bool usePopcount_;
+    bool usePopcount_, rowMajorWeights_;
 
     // utility function to convert a vector of floats into a vector of bools, where the
     // output boolean represents the sign of the input value (false: negative,
