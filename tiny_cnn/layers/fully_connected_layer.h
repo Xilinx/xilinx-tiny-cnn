@@ -36,8 +36,31 @@ public:
     typedef layer<Activation> Base;
     CNN_USE_LAYER_MEMBERS;
 
-    fully_connected_layer(cnn_size_t in_dim, cnn_size_t out_dim, bool has_bias = true)
-        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, has_bias ? out_dim : 0), has_bias_(has_bias) {}
+    fully_connected_layer(cnn_size_t in_dim, cnn_size_t out_dim, bool has_bias = true, std::string binaryParamFile = "")
+        : Base(in_dim, out_dim, size_t(in_dim) * out_dim, has_bias ? out_dim : 0), has_bias_(has_bias) {
+      if(binaryParamFile != "") {
+          loadFromBinaryFile(binaryParamFile);
+      }
+    }
+
+    void loadFromBinaryFile(std::string fileName) {
+      // TODO this assumes the binary file always uses a float for each parameter
+
+      std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      for(unsigned int line = 0 ; line < Base::W_.size(); line++) {
+        float e = 0;
+        wf.read((char *)&e, sizeof(float));
+        W_[line] = e;
+      }
+      if(has_bias_) {
+          for(unsigned int line = 0 ; line < Base::b_.size(); line++) {
+            float e = 0;
+            wf.read((char *)&e, sizeof(float));
+            b_[line] = e;
+          }
+      }
+      wf.close();
+    }
 
     size_t connection_size() const override {
         return size_t(in_size_) * out_size_ + size_t(has_bias_) * out_size_;

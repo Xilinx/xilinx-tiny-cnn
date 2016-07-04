@@ -29,6 +29,8 @@
 #include "tiny_cnn/util/image.h"
 #include "tiny_cnn/activations/activation_function.h"
 #include <deque>
+#include <string>
+#include <fstream>
 
 namespace tiny_cnn {
 
@@ -77,6 +79,25 @@ public:
 
     using layer_base::out_size;
 
+    void loadFromBinaryFile(std::string fileName) {
+      // TODO this assumes the binary file always uses a float for each parameter
+
+      std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      for(unsigned int line = 0 ; line < Base::W_.size(); line++) {
+        float e = 0;
+        wf.read((char *)&e, sizeof(float));
+        W_[line] = e;
+      }
+
+      for(unsigned int line = 0 ; line < Base::b_.size(); line++) {
+        float e = 0;
+        wf.read((char *)&e, sizeof(float));
+        b_[line] = e;
+      }
+
+      wf.close();
+    }
+
     /**
     * constructing convolutional layer
     *
@@ -95,9 +116,11 @@ public:
         cnn_size_t in_channels,
         cnn_size_t out_channels,
         padding pad_type = padding::valid,
+        std::string binaryParamFile = "",
         bool has_bias = true,
         cnn_size_t w_stride = 1,
-        cnn_size_t h_stride = 1)
+        cnn_size_t h_stride = 1
+        )
         : Base(in_width * in_height * in_channels, conv_out_dim(in_width, in_height, window_size, w_stride, h_stride, pad_type) * out_channels,
             sqr(window_size) * in_channels * out_channels, has_bias ? out_channels : 0),
         in_(in_width, in_height, in_channels),
@@ -108,6 +131,9 @@ public:
         w_stride_(w_stride), h_stride_(h_stride)
     {
         init();
+        if(binaryParamFile != "") {
+            loadFromBinaryFile(binaryParamFile);
+        }
     }
 
     /**

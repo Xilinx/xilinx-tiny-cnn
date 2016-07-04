@@ -1,5 +1,7 @@
 #pragma once
 #include "tiny_cnn/layers/layer.h"
+#include <fstream>
+#include <string>
 
 // right now functional during inference only
 // pre-trained batchnorm params must be manually set
@@ -23,9 +25,25 @@ public:
 
     // channels: number of channels. each channel has a batchnorm parameter set.
     // dim: number of pixels/elements in each channel.
-    batchnorm_layer(cnn_size_t channels, cnn_size_t dim = 1)
+    batchnorm_layer(cnn_size_t channels, cnn_size_t dim = 1, std::string paramFile = "")
         : Base(dim*channels, dim*channels, 4*channels, 0), dim_(dim), channels_(channels)
-    {}
+    {
+      if(paramFile != "") {
+          loadFromBinaryFile(paramFile);
+      }
+    }
+
+    void loadFromBinaryFile(std::string fileName) {
+      // TODO this assumes the binary file always uses 4 bytes per batchnorm parameter
+
+      std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      for(unsigned int line = 0 ; line < Base::W_.size(); line++) {
+        float e = 0;
+        wf.read((char *)&e, sizeof(float));
+        W_[line] = e;
+      }
+      wf.close();
+    }
 
     size_t connection_size() const override {
         return in_size_;
