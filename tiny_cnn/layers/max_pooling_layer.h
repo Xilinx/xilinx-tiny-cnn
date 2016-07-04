@@ -45,7 +45,8 @@ public:
         pool_size_(pooling_size),
         stride_(pooling_size),
         in_(in_width, in_height, in_channels),
-        out_(in_width / pooling_size, in_height / pooling_size, in_channels)
+        out_(in_width / pooling_size, in_height / pooling_size, in_channels),
+        ignore_border_(true)
     {
         if ((in_width % pooling_size) || (in_height % pooling_size))
             pooling_size_mismatch(in_width, in_height, pooling_size);
@@ -53,14 +54,15 @@ public:
         init_connection();
     }
 
-    max_pooling_layer(cnn_size_t in_width, cnn_size_t in_height, cnn_size_t in_channels, cnn_size_t pooling_size, cnn_size_t stride)
+    max_pooling_layer(cnn_size_t in_width, cnn_size_t in_height, cnn_size_t in_channels, cnn_size_t pooling_size, cnn_size_t stride, bool ignore_border = true)
         : Base(in_width * in_height * in_channels,
-        pool_out_dim(in_width, pooling_size, stride) * pool_out_dim(in_height, pooling_size, stride) * in_channels,
+        pool_out_dim(in_width, pooling_size, stride, ignore_border) * pool_out_dim(in_height, pooling_size, stride, ignore_border) * in_channels,
         0, 0),
         pool_size_(pooling_size),
         stride_(stride),
         in_(in_width, in_height, in_channels),
-        out_(pool_out_dim(in_width, pooling_size, stride), pool_out_dim(in_height, pooling_size, stride), in_channels)
+        ignore_border_(ignore_border),
+        out_(pool_out_dim(in_width, pooling_size, stride, ignore_border), pool_out_dim(in_height, pooling_size, stride, ignore_border), in_channels)
     {
         init_connection();
     }
@@ -141,6 +143,7 @@ public:
     size_t pool_size() const {return pool_size_;}
 
 private:
+    bool ignore_border_;
     size_t pool_size_;
     size_t stride_;
     std::vector<std::vector<cnn_size_t> > out2in_; // mapping out => in (1:N)
@@ -149,10 +152,11 @@ private:
     index3d<cnn_size_t> in_;
     index3d<cnn_size_t> out_;
 
-    static cnn_size_t pool_out_dim(cnn_size_t in_size, cnn_size_t pooling_size, cnn_size_t stride) {
-        //return (int) std::ceil(((double)in_size - pooling_size) / stride) + 1;
-        // TODO compute this properly -- just a quick fix to match with Lasagne/Theano maxpool output size
+    static cnn_size_t pool_out_dim(cnn_size_t in_size, cnn_size_t pooling_size, cnn_size_t stride, bool ignore_border) {
+      if(ignore_border)
         return (cnn_size_t) in_size/pooling_size;
+      else
+        return (int) std::ceil(((double)in_size - pooling_size) / stride) + 1;
     }
 
     void connect_kernel(cnn_size_t pooling_size, cnn_size_t outx, cnn_size_t outy, cnn_size_t  c)
