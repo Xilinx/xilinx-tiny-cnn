@@ -65,7 +65,7 @@ public:
                 // i.e. if two values have the same sign (pos-pos or neg-neg)
                 // the mul. result will be positive, otherwise negative
                 // when using the popcount mode, consider positive results only
-                const unsigned int wInd = rowMajorWeights_ ? i*out_size_+c : c*out_size_+i;
+                const unsigned int wInd = rowMajorWeights_ ? i*in_size_+c : c*out_size_+i;
                 if(usePopcount_)
                   a[i]  += (Wbin_[wInd] == in_bin[c]) ? +1 : 0;
                 else
