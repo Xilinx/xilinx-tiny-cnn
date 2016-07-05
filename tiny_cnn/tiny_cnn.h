@@ -45,6 +45,7 @@
 #include "layers/offloaded_layer.h"
 #include "layers/bnn_threshold_layer.h"
 #include "layers/chaninterleave_layer.h"
+#include "layers/monitor_layer.h"
 
 #include "activations/activation_function.h"
 #include "lossfunctions/loss_function.h"
