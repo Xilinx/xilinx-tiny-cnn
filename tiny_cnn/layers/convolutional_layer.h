@@ -83,6 +83,8 @@ public:
       // TODO this assumes the binary file always uses a float for each parameter
 
       std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      if(!wf.is_open())
+        throw "Could not open file";
       for(unsigned int line = 0 ; line < Base::W_.size(); line++) {
         float e = 0;
         wf.read((char *)&e, sizeof(float));

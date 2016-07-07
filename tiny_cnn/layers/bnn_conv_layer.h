@@ -40,6 +40,8 @@ public:
 
       // load weights
       std::ifstream wf(fileName, std::ios::binary | std::ios::in);
+      if(!wf.is_open())
+        throw "Could not open file";
       for(unsigned int line = 0 ; line < Wbin_.size(); line++) {
         unsigned long long e = 0;
         wf.read((char *)&e, sizeof(unsigned long long));

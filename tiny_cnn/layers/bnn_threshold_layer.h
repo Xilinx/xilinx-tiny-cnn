@@ -31,6 +31,8 @@ public:
 
       // load thresholds
       std::ifstream tf(fileName, std::ios::binary | std::ios::in);
+      if(!tf.is_open())
+        throw "Could not open file";
       for(unsigned int line = 0 ; line < channels_; line++) {
         unsigned long long e = 0;
         tf.read((char *)&e, sizeof(unsigned long long));
