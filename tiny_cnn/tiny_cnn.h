@@ -44,6 +44,7 @@
 #include "layers/bnn_conv_layer.h"
 #include "layers/offloaded_layer.h"
 #include "layers/bnn_threshold_layer.h"
+#include "layers/bnn_output_layer.h"
 #include "layers/chaninterleave_layer.h"
 #include "layers/monitor_layer.h"
 
