@@ -12,7 +12,6 @@
     * Neither the name of the <organization> nor the
     names of its contributors may be used to endorse or promote products
     derived from this software without specific prior written permission.
-
     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY 
     EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
     WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
@@ -58,6 +57,31 @@ inline void parse_mnist_header(std::ifstream& ifs, mnist_header& header) {
         throw nn_error("file error");
 }
 
+
+inline void parse_mnist_image_3channels(std::ifstream& ifs,
+    const mnist_header& header,
+    float_t scale_min,
+    float_t scale_max,
+    int x_padding,
+    int y_padding,
+    vec_t& dst) {
+    const int width = header.num_cols + 2 * x_padding;
+    const int height = header.num_rows + 2 * y_padding;
+
+    std::vector<uint8_t> image_vec(header.num_rows * header.num_cols * 3);
+
+    ifs.read((char*) &image_vec[0], header.num_rows * header.num_cols * 3);
+
+    dst.resize(width * height * 3, scale_min);
+	for (uint32_t c = 0; c < 3; c++)
+		for (uint32_t y = 0; y < header.num_rows; y++)
+		  for (uint32_t x = 0; x < header.num_cols; x++){
+			dst[c * width * height +  y * header.num_cols + x]
+			= (image_vec[c * width * height +  y * header.num_cols + x] / float_t(255)) * (scale_max - scale_min) + scale_min;
+			}
+}
+
+
 inline void parse_mnist_image(std::ifstream& ifs,
     const mnist_header& header,
     float_t scale_min,
@@ -99,12 +123,10 @@ inline void parse_mnist_labels(const std::string& label_file, std::vector<label_
 
     ifs.read((char*) &magic_number, 4);
     ifs.read((char*) &num_items, 4);
-
     if (is_little_endian()) { // MNIST data is big-endian format
         reverse_endian(&magic_number);
         reverse_endian(&num_items);
     }
-
     if (magic_number != 0x00000801 || num_items <= 0)
         throw nn_error("MNIST label-file format error");
 
@@ -157,12 +179,41 @@ inline void parse_mnist_images(const std::string& image_file,
     detail::mnist_header header;
 
     detail::parse_mnist_header(ifs, header);
-
     for (uint32_t i = 0; i < header.num_items; i++) {
         vec_t image;
         detail::parse_mnist_image(ifs, header, scale_min, scale_max, x_padding, y_padding, image);
         images->push_back(image);
     }
 }
+ 
+
+inline void parse_mnist_images_3channels(const std::string& image_file,
+    std::vector<vec_t> *images,
+    float_t scale_min,
+    float_t scale_max,
+    int x_padding,
+    int y_padding) {
+
+    if (x_padding < 0 || y_padding < 0)
+        throw nn_error("padding size must not be negative");
+    if (scale_min >= scale_max)
+        throw nn_error("scale_max must be greater than scale_min");
+
+    std::ifstream ifs(image_file.c_str(), std::ios::in | std::ios::binary);
+
+    if (ifs.bad() || ifs.fail())
+        throw nn_error("failed to open file:" + image_file);
+
+    detail::mnist_header header;
+
+    detail::parse_mnist_header(ifs, header);
+    for (uint32_t i = 0; i < header.num_items/3; i++) {
+        vec_t image;
+        detail::parse_mnist_image_3channels(ifs, header, scale_min, scale_max, x_padding, y_padding, image);
+        images->push_back(image);
+    }
+}
+
+
 
 } // namespace tiny_cnn

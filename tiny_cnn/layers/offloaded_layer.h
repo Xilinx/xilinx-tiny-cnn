@@ -9,6 +9,7 @@
 #include <vector>
 
 
+
 namespace tiny_cnn {
 
 typedef struct {
@@ -19,7 +20,21 @@ typedef struct {
     cnn_size_t out_channels;        // # output feature maps
 } OffloadConvParams;
 
-// function type for offload handling. args are (input, output, offloadID, conv params if any or 0)
+#ifdef SOLITAIRE
+// function type for offload handling. args are (input, output, offloadID, conv params if any or 0, target set of weigths)
+typedef void (*OffloadHandler)(const vec_t &, vec_t &, unsigned int, OffloadConvParams *, unsigned int);
+
+class offloaded_layer : public layer<activation::identity> {
+public:
+    typedef layer<activation::identity> Base;
+
+    offloaded_layer(cnn_size_t in_dim, cnn_size_t out_dim, OffloadHandler handler,
+                    unsigned int offloadID, OffloadConvParams * convParams = 0, unsigned int targetSet = 0) :
+        Base(in_dim, out_dim, 0, 0), offloadHandler_(handler), offloadID_(offloadID),
+        offloadConvParams_(convParams), targetSet_(targetSet)
+		
+#else
+// function type for offload handling. args are (input, output, offloadID, conv params if any or 0)	
 typedef void (*OffloadHandler)(const vec_t &, vec_t &, unsigned int, OffloadConvParams *);
 
 class offloaded_layer : public layer<activation::identity> {
@@ -30,6 +45,7 @@ public:
                     unsigned int offloadID, OffloadConvParams * convParams = 0) :
         Base(in_dim, out_dim, 0, 0), offloadHandler_(handler), offloadID_(offloadID),
         offloadConvParams_(convParams)
+#endif
     {
         // disable parallelization for offloaded layers
         Base::set_parallelize(false);
@@ -56,7 +72,7 @@ public:
     // forward prop does nothing except calling the
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
         vec_t & out = output_[index];
-        offloadHandler_(in, out, offloadID_, offloadConvParams_);
+        offloadHandler_(in, out, offloadID_, offloadConvParams_, targetSet_);
 
         return next_ ? next_->forward_propagation(out, index) : out;
     }
@@ -76,7 +92,10 @@ protected:
     OffloadHandler offloadHandler_;
     OffloadConvParams * offloadConvParams_;
     unsigned int offloadID_;
-
+#ifdef SOLITAIRE
+    unsigned int targetSet_;
+#endif
 };
 
 } // namespace tiny_cnn
+
