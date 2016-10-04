@@ -72,8 +72,11 @@ public:
     // forward prop does nothing except calling the
     const vec_t& forward_propagation(const vec_t& in, size_t index) override {
         vec_t & out = output_[index];
+#ifdef SOLITAIRE
         offloadHandler_(in, out, offloadID_, offloadConvParams_, targetSet_);
-
+#else
+	offloadHandler_(in, out, offloadID_, offloadConvParams_);
+#endif
         return next_ ? next_->forward_propagation(out, index) : out;
     }
 
