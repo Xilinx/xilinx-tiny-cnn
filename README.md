@@ -3,7 +3,9 @@ tiny-cnn: A header only, dependency-free deep learning framework in C++11
 
 Xilinx changes from original tiny-cnn:
  - added batchnorm layer (currently feedforward only, no training)
-
+ - support for offloaded layer
+ - interleave layer
+ - binarized layers
 
 | **Linux/Mac OS** | **Windows** |
 |------------------|-------------|
