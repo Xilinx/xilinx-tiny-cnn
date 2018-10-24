@@ -101,7 +101,7 @@ public:
 
     std::string layer_type() const override { return "bnn_conv_layer"; }
 
-    virtual void post_update() {
+    virtual void post_update() override {
         // once the weights have been updated, update the binarized versions too
         float2bipolar(W_, Wbin_);
     }
